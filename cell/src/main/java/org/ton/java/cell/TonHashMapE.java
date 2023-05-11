@@ -5,7 +5,6 @@ import org.ton.java.bitstring.BitString;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
 
 public class TonHashMapE extends TonHashMap {
 
@@ -23,7 +22,7 @@ public class TonHashMapE extends TonHashMap {
     }
 
 
-    public Cell serialize(Function<Object, BitString> keyParser, Function<Object, Cell> valueParser) {
+    public Cell serialize(KeySerializer keyParser, ValueSerializer valueParser) {
         List<Object> se = new ArrayList<>();
         for (Map.Entry<Object, Object> entry : elements.entrySet()) {
             BitString key = keyParser.apply(entry.getKey());

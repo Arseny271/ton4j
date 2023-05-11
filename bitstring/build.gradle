@@ -1,0 +1,14 @@
+apply plugin: 'com.android.library'
+
+android {
+    compileSdkVersion 33
+    namespace "org.ton.java.bitstring"
+    defaultConfig {
+        minSdkVersion 19
+    }
+}
+
+dependencies {
+    implementation project(":neodiX42:ton4j:utils")
+    implementation project(":neodiX42:ton4j:address")
+}

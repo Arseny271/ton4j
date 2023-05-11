@@ -6,7 +6,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Function;
 
 public class TonPfxHashMap extends TonHashMap {
 
@@ -28,7 +27,7 @@ public class TonPfxHashMap extends TonHashMap {
         BitString l = deserializeLabel(edge, keySize - key.toBitString().length());
         key.writeBitString(l);
         boolean pfx = edge.loadBit(); // pfx feature
-        if (pfx == false) {
+        if (!pfx) {
             Cell value = CellBuilder.beginCell().storeSlice(edge).endCell();
             List<Node> newList = new ArrayList<>(nodes);
             newList.add(new Node(key, value));
@@ -36,16 +35,17 @@ public class TonPfxHashMap extends TonHashMap {
         }
 
         AtomicInteger i = new AtomicInteger();
-        return edge.refs.stream().map(c -> {
+        List<Node> resultList = new ArrayList<>();
+        for (Cell c : edge.refs) {
             CellSlice forkEdge = CellSlice.beginParse(c);
             BitString forkKey = key.clone();
             forkKey.writeBit(i.get() != 0);
             i.getAndIncrement();
-            return deserializeEdge(forkEdge, keySize, forkKey);
-        }).reduce(new ArrayList<>(), (x, y) -> {
-            x.addAll(y);
-            return x;
-        });
+            List<Node> subList = deserializeEdge(forkEdge, keySize, forkKey);
+            resultList.addAll(subList);
+        }
+
+        return resultList;
     }
 
 
@@ -53,7 +53,7 @@ public class TonPfxHashMap extends TonHashMap {
      * Loads HashMap and parses keys and values
      * HashMap X Y;
      */
-    void deserialize(CellSlice c, Function<BitString, Object> keyParser, Function<Cell, Object> valueParser) {
+    void deserialize(CellSlice c, KeyParser keyParser, ValueParser valueParser) {
         List<Node> nodes = deserializeEdge(c, keySize, new BitString(keySize));
 
         for (Node node : nodes) {
@@ -96,7 +96,7 @@ public class TonPfxHashMap extends TonHashMap {
         }
     }
 
-    public Cell serialize(Function<Object, BitString> keyParser, Function<Object, Cell> valueParser) {
+    public Cell serialize(KeySerializer keyParser, ValueSerializer valueParser) {
         List<Object> se = new ArrayList<>();
         for (Map.Entry<Object, Object> entry : elements.entrySet()) {
             BitString key = keyParser.apply(entry.getKey());

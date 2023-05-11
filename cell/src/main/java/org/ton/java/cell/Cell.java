@@ -1,6 +1,5 @@
 package org.ton.java.cell;
 
-import org.apache.commons.codec.binary.Hex;
 import org.ton.java.bitstring.BitString;
 import org.ton.java.utils.Utils;
 
@@ -72,7 +71,7 @@ public class Cell {
             boolean incomplete = hexBitString.endsWith("_");
 
             hexBitString = hexBitString.replaceAll("_", "");
-            byte[] b = Hex.decodeHex(hexBitString);
+            byte[] b = Utils.hexToBytes(hexBitString);
 
             BitString bs = new BitString(hexBitString.length() * 8);
             bs.writeBytes(b);

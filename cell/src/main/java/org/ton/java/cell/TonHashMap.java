@@ -1,13 +1,34 @@
 package org.ton.java.cell;
 
 import org.ton.java.bitstring.BitString;
+import org.ton.java.utils.Utils;
 
 import java.math.BigInteger;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Function;
 
 public class TonHashMap {
+
+    public interface KeyParser {
+        Object apply (BitString bits);
+    }
+
+    public interface ValueParser {
+        Object apply (Cell bits);
+    }
+
+    public interface KeySerializer {
+        BitString apply (Object o);
+    }
+
+    public interface ValueSerializer {
+        Cell apply (Object o);
+    }
 
     public HashMap<Object, Object> elements;
     int keySize;
@@ -56,24 +77,28 @@ public class TonHashMap {
             return newList;
         }
 
+        List<List<Node>> resultList = new ArrayList<>();
         AtomicInteger i = new AtomicInteger();
-        return edge.refs.stream().map(c -> {
+        for (Cell c : edge.refs) {
             CellSlice forkEdge = CellSlice.beginParse(c);
             BitString forkKey = key.clone();
             forkKey.writeBit(i.get() != 0);
             i.getAndIncrement();
-            return deserializeEdge(forkEdge, keySize, forkKey);
-        }).reduce(new ArrayList<>(), (x, y) -> {
-            x.addAll(y);
-            return x;
-        });
+            resultList.add(deserializeEdge(forkEdge, keySize, forkKey));
+        }
+
+        for (List<Node> list : resultList) {
+            nodes.addAll(list);
+        }
+
+        return nodes;
     }
 
     /**
      * Loads HashMap and parses keys and values
      * HashMap X Y;
      */
-    void deserialize(CellSlice c, Function<BitString, Object> keyParser, Function<Cell, Object> valueParser) {
+    void deserialize(CellSlice c, KeyParser keyParser, ValueParser valueParser) {
         List<Node> nodes = deserializeEdge(c, keySize, new BitString(keySize));
         for (Node node : nodes) {
             elements.put(keyParser.apply(node.key), valueParser.apply(node.value));
@@ -183,7 +208,7 @@ public class TonHashMap {
             return;
         }
 
-        boolean isSame = ((label.equals("0".repeat(label.length()))) || label.equals("10".repeat(label.length())));
+        boolean isSame = ((label.equals(Utils.repeatString("0", label.length()))) || label.equals(Utils.repeatString("10", label.length())));
         if (isSame) {
             builder.bits.writeBit(true);
             builder.bits.writeBit(true); //hml_same
@@ -231,7 +256,7 @@ public class TonHashMap {
         }
     }
 
-    public Cell serialize(Function<Object, BitString> keyParser, Function<Object, Cell> valueParser) {
+    public Cell serialize(KeySerializer keyParser, ValueSerializer valueParser) {
         List<Object> se = new ArrayList<>();
         for (Map.Entry<Object, Object> entry : elements.entrySet()) {
             BitString key = keyParser.apply(entry.getKey());

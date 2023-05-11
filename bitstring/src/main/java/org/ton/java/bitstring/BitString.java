@@ -1,5 +1,7 @@
 package org.ton.java.bitstring;
 
+import static java.util.Objects.isNull;
+
 import org.ton.java.address.Address;
 import org.ton.java.utils.Utils;
 
@@ -7,9 +9,8 @@ import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
-import static java.util.Objects.isNull;
-
 public class BitString {
+    private final static BigInteger TWO = BigInteger.valueOf(2);
 
     byte[] array;
     public int writeCursor;
@@ -176,7 +177,7 @@ public class BitString {
         String s = number.toString(2);
 
         if (s.length() != bitLength) {
-            s = "0".repeat(bitLength - s.length()) + s;
+            s = Utils.repeatString("0", bitLength - s.length()) + s;
         }
 
         for (int i = 0; i < bitLength; i++) {
@@ -214,7 +215,7 @@ public class BitString {
         } else {
             if (number.signum() == -1) {
                 writeBit(true);
-                BigInteger b = BigInteger.TWO;
+                BigInteger b = TWO;
                 BigInteger nb = b.pow(bitLength - 1);
                 writeUint(nb.add(number), bitLength - 1);
             } else {
@@ -287,7 +288,7 @@ public class BitString {
         if (isNull(address)) {
             writeUint(BigInteger.ZERO, 2);
         } else {
-            writeUint(BigInteger.TWO, 2);
+            writeUint(TWO, 2);
             writeUint(BigInteger.ZERO, 1);
             writeInt(BigInteger.valueOf(address.wc), 8);
             writeBytes(address.hashPart);
@@ -423,7 +424,7 @@ public class BitString {
 
         BigInteger number = readUint(bitLength - 1);
         if (sign) {
-            BigInteger b = BigInteger.TWO;
+            BigInteger b = TWO;
             BigInteger nb = b.pow(bitLength - 1);
             number = number.subtract(nb);
         }

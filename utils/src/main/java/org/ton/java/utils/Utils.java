@@ -1,8 +1,7 @@
 package org.ton.java.utils;
 
-import com.iwebpp.crypto.TweetNaclFast;
-import org.apache.commons.codec.DecoderException;
-import org.apache.commons.codec.binary.Hex;
+import static java.util.Objects.isNull;
+import static java.util.Objects.nonNull;
 
 import java.io.BufferedReader;
 import java.io.InputStream;
@@ -17,16 +16,12 @@ import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayDeque;
 import java.util.Arrays;
-import java.util.Base64;
 import java.util.Locale;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-import java.util.zip.CRC32C;
-import java.util.zip.Checksum;
 
-import static java.util.Objects.isNull;
-import static java.util.Objects.nonNull;
+import android.util.Base64;
 
 public class Utils {
     private static final String HEXES = "0123456789ABCDEF";
@@ -40,9 +35,7 @@ public class Utils {
      * uses POLY 0x1EDC6F41
      */
     public static Long getCRC32ChecksumAsLong(byte[] bytes) {
-        Checksum crc32c = new CRC32C();
-        crc32c.update(bytes, 0, bytes.length);
-        return crc32c.getValue();
+        return calculateCRC32C(bytes);
     }
 
     public static String getCRC32ChecksumAsHex(byte[] bytes) {
@@ -161,84 +154,76 @@ public class Utils {
         return bi.toString(2);
     }
 
-    public static String bytesToHex(byte[] raw) {
-        final StringBuilder hex = new StringBuilder(2 * raw.length);
-        for (final byte b : raw) {
-            hex.append(HEXES.charAt((b & 0xF0) >> 4)).append(HEXES.charAt((b & 0x0F)));
-        }
-        return hex.toString().toLowerCase();
-    }
-
     public static String base64UrlSafeToHexString(String base64) {
-        byte[] decoded = Base64.getUrlDecoder().decode(base64);
+        byte[] decoded = base64SafeUrlToBytes(base64);
         return bytesToHex(decoded);
     }
 
     public static String base64ToHexString(String base64) {
-        byte[] decoded = Base64.getDecoder().decode(base64);
+        byte[] decoded = base64ToBytes(base64);
         return bytesToHex(decoded);
     }
 
-    public static String hexStringToBase64UrlSafe(String hex) throws DecoderException {
-        byte[] decodedHex = Hex.decodeHex(hex);
-        return new String(Base64.getUrlEncoder().encode(decodedHex));
+    public static String hexStringToBase64UrlSafe(String hex) {
+        byte[] decodedHex = hexToBytes(hex);
+        return new String(bytesToBase64SafeUrl(decodedHex));
     }
 
-    public static String hexStringToBase64(String hex) throws DecoderException {
-        byte[] decodedHex = Hex.decodeHex(hex);
-        return new String(Base64.getEncoder().encode(decodedHex));
+    public static String hexStringToBase64(String hex) {
+        byte[] decodedHex = hexToBytes(hex);
+        return new String(bytesToBase64(decodedHex));
     }
 
     public static String base64ToBitString(String base64) {
-        byte[] decode = Base64.getDecoder().decode(base64);
+        byte[] decode = base64ToBytes(base64);
         return new BigInteger(1, decode).toString(2);
     }
 
     public static String bytesToBase64(byte[] bytes) {
-        return Base64.getEncoder().encodeToString(bytes);
+        return Base64.encodeToString(bytes, Base64.NO_WRAP);
     }
 
     public static String bytesToBase64SafeUrl(byte[] bytes) {
-        return Base64.getUrlEncoder().encodeToString(bytes);
+        return Base64.encodeToString(bytes, Base64.NO_WRAP | Base64.URL_SAFE);
     }
 
     public static byte[] base64ToBytes(String base64) {
-        return Base64.getDecoder().decode(base64.getBytes(StandardCharsets.UTF_8));
+        return Base64.decode(base64, Base64.NO_WRAP);
     }
 
     public static byte[] base64SafeUrlToBytes(String base64) {
-        return Base64.getUrlDecoder().decode(base64.getBytes(StandardCharsets.UTF_8));
+        return Base64.decode(base64, Base64.NO_WRAP | Base64.URL_SAFE);
     }
 
     public static String base64ToString(String base64) {
-        return new String(Base64.getDecoder().decode(base64.getBytes(StandardCharsets.UTF_8)));
+        return new String(base64ToBytes(base64));
 
     }
 
     public static String stringToBase64(String str) {
-        return Base64.getEncoder().encodeToString(str.getBytes(StandardCharsets.UTF_8));
+        return bytesToBase64(str.getBytes(StandardCharsets.UTF_8));
     }
 
-    public static String bitStringToBase64(String binary) throws DecoderException {
+    public static String bitStringToBase64(String binary) {
         int toPad = (binary.length() % 8) == 0 ? 0 : 8 - (binary.length() % 8);
         final StringBuilder bits = new StringBuilder(binary);
         if (toPad != 0) {
-            bits.append("0".repeat(toPad));
+            bits.append(repeatString("0", toPad));
         }
         String hex = new BigInteger(bits.toString(), 2).toString(16);
-        byte[] decodedHex = Hex.decodeHex(hex);
-        return new String(Base64.getEncoder().encode(decodedHex));
+        byte[] decodedHex = hexToBytes(hex);
+        return bytesToBase64(decodedHex);
     }
 
-    public static String bitStringToBase64UrlSafe(String binary) throws DecoderException {
+    public static String bitStringToBase64UrlSafe(String binary) {
         int toPad = (binary.length() % 8) == 0 ? 0 : 8 - (binary.length() % 8);
         final StringBuilder bits = new StringBuilder(binary);
         if (toPad != 0) {
-            bits.append("0".repeat(toPad));
+            bits.append(repeatString("0", toPad));
         }
         String hex = new BigInteger(bits.toString(), 2).toString(16);
-        byte[] decodedHex = Hex.decodeHex(hex);
-        return new String(Base64.getUrlEncoder().encode(decodedHex));
+        byte[] decodedHex = hexToBytes(hex);
+        return bytesToBase64SafeUrl(decodedHex);
     }
 
     public static byte[] concatBytes(byte[] a, byte[] b) {
@@ -246,10 +231,6 @@ public class Utils {
         System.arraycopy(a, 0, c, 0, a.length);
         System.arraycopy(b, 0, c, a.length, b.length);
         return c;
-    }
-
-    public static byte[] hexToBytes(String hex) {
-        return hexStringToByteArray(hex);
     }
 
     private static byte[] hexStringToByteArray(String s) {
@@ -319,75 +300,6 @@ public class Utils {
             return null;
         }
         return str.substring(openindex, closeIndex + 1).trim();
-    }
-
-    /**
-     * Signature algorithm, Implements ed25519.
-     *
-     * @return TweetNaclFast.Signature.KeyPair, where keyPair.getPublicKey() - 32 bytes and keyPair.getPrivateKey - 64 bytes
-     */
-    public static TweetNaclFast.Signature.KeyPair generateSignatureKeyPair() {
-        return TweetNaclFast.Signature.keyPair();
-    }
-
-    /**
-     * Box algorithm, Public-key authenticated encryption
-     *
-     * @return TweetNaclFast.Box.KeyPair, where keyPair.getPublicKey() and keyPair.getPrivateKey.
-     */
-    public static TweetNaclFast.Box.KeyPair generateKeyPair() {
-        return TweetNaclFast.Box.keyPair();
-    }
-
-    /**
-     * @param secretKey 32 bytes secret key
-     * @return TweetNaclFast.Signature.KeyPair, where keyPair.getPublicKey() - 32 bytes and keyPair.getPrivateKey - 64 bytes
-     */
-    public static TweetNaclFast.Signature.KeyPair generateSignatureKeyPairFromSeed(byte[] secretKey) {
-        return TweetNaclFast.Signature.keyPair_fromSeed(secretKey);
-    }
-
-    /**
-     * @param secretKey 32 bytes secret key
-     * @return TweetNaclFast.Box.KeyPair, where keyPair.getPublicKey() - 32 bytes and keyPair.getPrivateKey - 32 bytes
-     */
-    public static TweetNaclFast.Box.KeyPair generateKeyPairFromSecretKey(byte[] secretKey) {
-        return TweetNaclFast.Box.keyPair_fromSecretKey(secretKey);
-    }
-
-    /**
-     * If 32 bytes secret key is provided, then signature is generated out of it and its secret key is used.
-     *
-     * @param prvKey 32 or 64 bytes secret key.
-     */
-    public static TweetNaclFast.Signature getSignature(byte[] pubKey, byte[] prvKey) {
-        TweetNaclFast.Signature signature;
-        if (prvKey.length == 64) {
-            signature = new TweetNaclFast.Signature(pubKey, prvKey);
-        } else {
-            TweetNaclFast.Signature.KeyPair keyPair = generateSignatureKeyPairFromSeed(prvKey);
-            signature = new TweetNaclFast.Signature(pubKey, keyPair.getSecretKey());
-        }
-        return signature;
-    }
-
-    /**
-     * Signs data
-     *
-     * @param pubKey 32 bytes pubKey
-     * @param prvKey 32 or 64 bytes prvKey
-     * @param data   data to sign
-     * @return byte[] signature
-     */
-    public static byte[] signData(byte[] pubKey, byte[] prvKey, byte[] data) {
-        TweetNaclFast.Signature signature;
-        if (prvKey.length == 64) {
-            signature = new TweetNaclFast.Signature(pubKey, prvKey);
-        } else {
-            TweetNaclFast.Signature.KeyPair keyPair = generateSignatureKeyPairFromSeed(prvKey);
-            signature = new TweetNaclFast.Signature(pubKey, keyPair.getSecretKey());
-        }
-        return signature.detached(data);
     }
 
     public static String toUTC(long timestamp) {
@@ -518,5 +430,60 @@ public class Utils {
             result |= Integer.parseInt(part);
         }
         return result;
+    }
+
+    private static final int[] TABLE = new int[256];
+    static {
+        for (int i = 0; i < 256; i++) {
+            int crc = i;
+            for (int j = 0; j < 8; j++) {
+                if ((crc & 1) != 0) {
+                    crc = (crc >>> 1) ^ 0x82f63b78;
+                } else {
+                    crc >>>= 1;
+                }
+            }
+            TABLE[i] = crc;
+        }
+    }
+
+    private static long calculateCRC32C(byte[] data) {
+        int crc = 0xffffffff;
+        for (byte b : data) {
+            crc = TABLE[(crc ^ b) & 0xff] ^ (crc >>> 8);
+        }
+        return crc ^ 0xffffffff;
+    }
+
+
+    final protected static char[] hexArray = HEXES.toCharArray();
+    public static String bytesToHex(byte[] bytes) {
+        if (bytes == null) {
+            return "";
+        }
+        char[] hexChars = new char[bytes.length * 2];
+        int v;
+        for (int j = 0; j < bytes.length; j++) {
+            v = bytes[j] & 0xFF;
+            hexChars[j * 2] = hexArray[v >>> 4];
+            hexChars[j * 2 + 1] = hexArray[v & 0x0F];
+        }
+        return new String(hexChars);
+    }
+
+    public static byte[] hexToBytes(String hex) {
+        if (hex == null) {
+            return null;
+        }
+        int len = hex.length();
+        byte[] data = new byte[len / 2];
+        for (int i = 0; i < len; i += 2) {
+            data[i / 2] = (byte) ((Character.digit(hex.charAt(i), 16) << 4) + Character.digit(hex.charAt(i + 1), 16));
+        }
+        return data;
+    }
+
+    public static String repeatString(String s, int n) {
+        return new String(new char[n]).replace("\0", s);
     }
 }

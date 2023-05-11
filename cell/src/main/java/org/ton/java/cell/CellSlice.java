@@ -8,7 +8,6 @@ import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.function.Function;
 
 public class CellSlice {
 
@@ -139,7 +138,7 @@ public class CellSlice {
         return result;
     }
 
-    public TonHashMap loadDict(int n, Function<BitString, Object> keyParser, Function<Cell, Object> valueParser) {
+    public TonHashMap loadDict(int n, TonHashMap.KeyParser keyParser, TonHashMap.ValueParser valueParser) {
         TonHashMap x = new TonHashMap(n);
         x.deserialize(this, keyParser, valueParser);
         /*
@@ -163,7 +162,7 @@ public class CellSlice {
         return x;
     }
 
-    public TonHashMapE loadDictE(int n, Function<BitString, Object> keyParser, Function<Cell, Object> valueParser) {
+    public TonHashMapE loadDictE(int n, TonHashMap.KeyParser keyParser, TonHashMap.ValueParser valueParser) {
         boolean isEmpty = !this.loadBit();
         if (isEmpty) {
             return new TonHashMapE(n);
@@ -174,14 +173,14 @@ public class CellSlice {
         }
     }
 
-    public TonPfxHashMap loadDictPfx(int n, Function<BitString, Object> keyParser, Function<Cell, Object> valueParser) {
+    public TonPfxHashMap loadDictPfx(int n, TonHashMap.KeyParser keyParser, TonHashMap.ValueParser valueParser) {
         TonPfxHashMap x = new TonPfxHashMap(n);
         x.deserialize(this, keyParser, valueParser);
         return x;
     }
 
 
-    public TonPfxHashMapE loadDictPfxE(int n, Function<BitString, Object> keyParser, Function<Cell, Object> valueParser) {
+    public TonPfxHashMapE loadDictPfxE(int n, TonHashMap.KeyParser keyParser, TonHashMap.ValueParser valueParser) {
         boolean isEmpty = !this.loadBit();
         if (isEmpty) {
             return new TonPfxHashMapE(n);
@@ -200,7 +199,7 @@ public class CellSlice {
      * @param valueParser - value deserializor
      * @return TonHashMap - dict
      */
-    public TonHashMap preloadDict(int n, Function<BitString, Object> keyParser, Function<Cell, Object> valueParser) {
+    public TonHashMap preloadDict(int n, TonHashMap.KeyParser keyParser, TonHashMap.ValueParser valueParser) {
         TonHashMap x = new TonHashMap(n);
         x.deserialize(this.clone(), keyParser, valueParser);
         return x;
@@ -214,7 +213,7 @@ public class CellSlice {
      * @param valueParser - value deserializor
      * @return TonHashMap - dict
      */
-    public TonHashMap preloadDictE(int n, Function<BitString, Object> keyParser, Function<Cell, Object> valueParser) {
+    public TonHashMap preloadDictE(int n, TonHashMap.KeyParser keyParser, TonHashMap.ValueParser valueParser) {
         boolean isEmpty = !this.preloadBit();
         if (isEmpty) {
             return new TonHashMap(n);
@@ -435,5 +434,13 @@ public class CellSlice {
 
         String address = workchain + ":" + String.format("%64s", hashPart.toString(16)).replace(' ', '0');
         return Address.of(address);
+    }
+
+    public int remainingBits () {
+        return bits.writeCursor - bits.readCursor;
+    }
+
+    public boolean hasRef () {
+        return !refs.isEmpty();
     }
 }

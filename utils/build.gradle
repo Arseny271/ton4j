@@ -1,0 +1,13 @@
+apply plugin: 'com.android.library'
+
+android {
+    compileSdkVersion 33
+    namespace "org.ton.java.utils"
+    defaultConfig {
+        minSdkVersion 19
+    }
+}
+
+dependencies {
+
+}
